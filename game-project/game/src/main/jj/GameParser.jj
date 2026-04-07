@@ -1,0 +1,217 @@
+options {
+  STATIC = false;
+  UNICODE_INPUT = true; 
+}
+
+PARSER_BEGIN(GameParser)
+package edu.curtin.game;
+
+import java.util.*;
+import java.io.*;
+
+public class GameParser {
+    // Parser-scoped fields (typed)
+    private Map<String,Object> cfg;
+    private List<Map<String,Object>> items;
+    private List<Map<String,Object>> obstacles;
+    private List<String> plugins;
+    private List<String> scripts;
+
+    public static void main(String[] args) throws Exception {
+        Reader reader = new InputStreamReader(System.in, "UTF-8");
+        GameParser parser = new GameParser(reader);
+        Map<String,Object> cfg = parser.Input();
+        System.out.println("Parsed configuration:");
+        System.out.println(cfg);
+    }
+}
+PARSER_END(GameParser)
+
+/* -------------------- WHITESPACE -------------------- */
+SKIP : { " " | "\t" | "\r" | "\n" | "\uFEFF" | "\u200B" }
+
+/* -------------------- TOKENS -------------------- */
+TOKEN : {
+      < SIZE       : "size" >
+    | < START      : "start" >
+    | < GOAL       : "goal" >
+    | < ITEM       : "item" >
+    | < OBSTACLE   : "obstacle" >
+    | < PLUGIN     : "plugin" >
+    | < SCRIPT     : "script" >
+    | < AT         : "at" >
+    | < MESSAGE    : "message" >
+    | < REQUIRES   : "requires" >
+    | < BANGBRACE  : "!{" >
+    | < LBRACE     : "{" >
+    | < RBRACE     : "}" >
+    | < LPAREN     : "(" >
+    | < RPAREN     : ")" >
+    | < COMMA      : "," >
+    | < QUOTED_STRING : "\"" (~["\""])* "\"" >
+    | < NUMBER     : (["0"-"9"])+ >
+    | < IDENT      : (["A"-"Z","a"-"z","0"-"9","_"])+ >
+    | < DOT        : "." >
+}
+
+/* -------------------- SCRIPT LEXICAL STATE -------------------- */
+<SCRIPT_STATE>
+TOKEN : {
+    < SCRIPT_RBRACE : "}" > { SwitchTo(DEFAULT); }
+}
+
+<SCRIPT_STATE>
+TOKEN : {
+    < SCRIPT_TEXT : (~["}"])+ >
+}
+
+/* -------------------- GRAMMAR -------------------- */
+
+Map<String,Object> Input() :
+{
+    cfg       = new HashMap<String,Object>();
+    items     = new ArrayList<Map<String,Object>>();
+    obstacles = new ArrayList<Map<String,Object>>();
+    plugins   = new ArrayList<String>();
+    scripts   = new ArrayList<String>();
+
+    cfg.put("items", items);
+    cfg.put("obstacles", obstacles);
+    cfg.put("plugins", plugins);
+    cfg.put("scripts", scripts);
+}
+{
+    ( Declaration() )+ <EOF>
+    { return cfg; }
+}
+
+void Declaration() :
+{}
+{
+      SizeDecl()
+    | StartDecl()
+    | GoalDecl()
+    | ItemDecl()
+    | ObstacleDecl()
+    | PluginDecl()
+    | ScriptDecl()
+}
+
+/*** size ***/
+void SizeDecl() : { int r; int c; Token t; }
+{
+    <SIZE> <LPAREN>
+        t=<NUMBER> { r = Integer.parseInt(t.image); }
+        <COMMA>
+        t=<NUMBER> { c = Integer.parseInt(t.image); }
+    <RPAREN>
+    { cfg.put("rows", Integer.valueOf(r)); cfg.put("cols", Integer.valueOf(c)); }
+}
+
+/*** start ***/
+void StartDecl() : { int r; int c; Token t; }
+{
+    <START> <LPAREN>
+        t=<NUMBER> { r = Integer.parseInt(t.image); }
+        <COMMA>
+        t=<NUMBER> { c = Integer.parseInt(t.image); }
+    <RPAREN>
+    { cfg.put("startRow", Integer.valueOf(r)); cfg.put("startCol", Integer.valueOf(c)); }
+}
+
+/*** goal ***/
+void GoalDecl() : { int r; int c; Token t; }
+{
+    <GOAL> <LPAREN>
+        t=<NUMBER> { r = Integer.parseInt(t.image); }
+        <COMMA>
+        t=<NUMBER> { c = Integer.parseInt(t.image); }
+    <RPAREN>
+    { cfg.put("goalRow", Integer.valueOf(r)); cfg.put("goalCol", Integer.valueOf(c)); }
+}
+
+/*** item ***/
+void ItemDecl() :
+{
+    Map<String,Object> item = new HashMap<String,Object>();
+    String name; String message;
+    List<int[]> pos = new ArrayList<int[]>();
+    int r, c;
+    Token t;
+}
+{
+    <ITEM>
+    t=<QUOTED_STRING> { name = t.image.substring(1, t.image.length()-1); item.put("name", name); }
+    <LBRACE>
+        <AT>
+        <LPAREN>
+            t=<NUMBER> { r = Integer.parseInt(t.image); }
+            <COMMA>
+            t=<NUMBER> { c = Integer.parseInt(t.image); }
+        <RPAREN> { pos.add(new int[]{r,c}); }
+        ( <COMMA>
+            <LPAREN>
+                t=<NUMBER> { r = Integer.parseInt(t.image); }
+                <COMMA>
+                t=<NUMBER> { c = Integer.parseInt(t.image); }
+            <RPAREN> { pos.add(new int[]{r,c}); }
+        )*
+        { item.put("positions", pos); }
+
+        <MESSAGE>
+        t=<QUOTED_STRING> { message = t.image.substring(1, t.image.length()-1); item.put("message", message); }
+    <RBRACE>
+    { items.add(item); }
+}
+
+/*** obstacle ***/
+void ObstacleDecl() :
+{
+    Map<String,Object> obs = new HashMap<String,Object>();
+    List<int[]> pos = new ArrayList<int[]>();
+    List<String> req = new ArrayList<String>();
+    int r, c;
+    Token t;
+}
+{
+    <OBSTACLE> <LBRACE>
+        <AT>
+        <LPAREN>
+            t=<NUMBER> { r = Integer.parseInt(t.image); }
+            <COMMA>
+            t=<NUMBER> { c = Integer.parseInt(t.image); }
+        <RPAREN> { pos.add(new int[]{r,c}); }
+        ( <COMMA>
+            <LPAREN>
+                t=<NUMBER> { r = Integer.parseInt(t.image); }
+                <COMMA>
+                t=<NUMBER> { c = Integer.parseInt(t.image); }
+            <RPAREN> { pos.add(new int[]{r,c}); }
+        )*
+        { obs.put("positions", pos); }
+
+        <REQUIRES>
+        t=<QUOTED_STRING> { req.add(t.image.substring(1, t.image.length()-1)); }
+        ( <COMMA> t=<QUOTED_STRING> { req.add(t.image.substring(1, t.image.length()-1)); } )*
+        { obs.put("requiredItems", req); }
+    <RBRACE>
+    { obstacles.add(obs); }
+}
+
+/*** plugin  ***/
+void PluginDecl() : { Token t; StringBuffer sb = new StringBuffer(); }
+{
+    <PLUGIN>
+    t=<IDENT> { sb.append(t.image); }
+    ( <DOT> t=<IDENT> { sb.append('.').append(t.image); } )*
+    { plugins.add(sb.toString()); }
+}
+
+/*** script  ***/
+void ScriptDecl() : { StringBuffer code = new StringBuffer(); Token t; }
+{
+    <SCRIPT> <BANGBRACE> { token_source.SwitchTo(SCRIPT_STATE); } 
+    ( t=<SCRIPT_TEXT> { code.append(t.image); } )*
+    <SCRIPT_RBRACE>
+    { scripts.add(code.toString().trim()); }
+}

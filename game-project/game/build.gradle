@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'pmd'
+    id 'application'
+    id 'ca.coglinc2.javacc' version '3.0.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':api')
+    implementation project(':plugins:teleport')
+    implementation project(':plugins:penalty')
+    implementation project(':plugins:reveal')
+    implementation 'org.python:jython-standalone:2.7.3'
+}
+
+application {
+    mainClass = 'edu.curtin.game.GameMain'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "$buildDir/javacc"     
+        }
+    }
+}
+
+compileJava {
+    options.compilerArgs << "-Xlint:all,-serial"
+}
+
+pmd {
+    consoleOutput = true
+    toolVersion = '7.15.0'
+    ruleSets = []
+    ruleSetFiles = files(rootProject.file('saed-pmd-rules.xml'))
+}
+
+
+compileJavacc {
+    inputDirectory = file('src/main/jj/')
+    outputDirectory = file(project.buildDir.absolutePath + '/javacc')
+}
