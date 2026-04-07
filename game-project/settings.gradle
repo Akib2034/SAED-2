@@ -1,0 +1,3 @@
+rootProject.name = 'game-project'
+
+include 'api', 'game', 'plugins:teleport', 'plugins:penalty', 'plugins:reveal'

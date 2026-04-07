@@ -1,0 +1,25 @@
+size (10,10)
+start (1,5)
+goal (9,8)
+
+item "Bazooka" {
+    at (0,0), (10,5), (7,1)
+    message "Acquired Bazooka.Let's go destroy that castle."
+}
+
+item "Potion" {
+    at (1,3), (2,7), (5, 5), (1,2)
+    message "Potion to restore HP."
+}
+
+item "map" {
+    at (2,4)
+    message "Suddenly you can see."
+}
+
+obstacle {
+    at (1,1)
+    requires "Bazooka"
+}
+
+plugin edu.curtin.gameplugins.Reveal
